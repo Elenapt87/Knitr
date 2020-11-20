@@ -1,0 +1,92 @@
+Knitr Assignment
+====================  
+  
+  
+  
+### Introduction
+
+I will use this document to analyse the Activity Monitoring dataset.
+
+
+  
+### Q1 - Code for reading in the dataset and/or processing the data  
+```{r}
+data<-read.csv("C:/activity.csv")
+```
+  
+
+### Q2 - Histogram of the total number of steps taken each day  
+```{r,results="asis",message=FALSE}
+library(dplyr)
+dailytotal <- subset(data,is.na(steps)==FALSE) %>% group_by(date) %>% summarise(Total_Steps = sum(steps))
+totals<-as.numeric(dailytotal$Total_Steps)
+hist(totals, main="Histogram of Total number of steps taken each day", xlab= "Steps Taken")
+```
+  
+  
+### Q3 - Mean and median number of steps taken each day  
+```{r,results="asis",message=FALSE,warning = FALSE}
+library(dplyr)
+dailymean <- subset(data,is.na(steps)==FALSE) %>% group_by(date) %>% summarise(Mean = mean(steps))
+dailymedian <- subset(data,is.na(steps)==FALSE) %>% group_by(date) %>% summarise(Median = median(steps))
+mean<-mean(dailymean$Mean)
+median<-median(dailymedian$Median)
+library(kableExtra)
+k<-kbl(merge(dailymean,dailymedian, by="date"))
+```
+The average steps is  `r mean` and the median steps is `r median`.
+  
+### Q4 - Time series plot of the average number of steps taken
+```{r,message=FALSE,warning=FALSE}
+plot(data=dailymean,y=dailymean$Mean,x=as.Date(dailymean$date),xlab="Date",
+     ylab="Average Steps",main="Average steps taken over time")
+```
+
+### Q5 - The 5-minute interval that, on average, contains the maximum number of steps  
+```{r,message=FALSE,warning=FALSE}
+m<-subset(data,is.na(steps)==FALSE) %>% group_by(interval) %>% summarise(Mean = mean(steps))
+m2<-head(m[order(-m$Mean),],1)
+m3<-m2$interval
+```
+The 5-minute interval with the max number of steps, on average, is `r m3`.  
+
+
+### Q6 - Code to describe and show a strategy for imputing missing data  
+The below code is used to work out which rows have missing step counts.  
+The average, where data isn't missing, is calculated for those intervals
+  with missing step counts.  
+The imputed averages are joined to the missing data set and stored in a new variable.
+```{r,message=FALSE,warning=FALSE}
+missing<-subset(data,is.na(steps)==TRUE)
+imputed_data<-merge(missing,m,by="interval")
+```
+
+### Q7 - Histogram of the total number of steps taken each day after missing values are imputed
+```{r,message=FALSE,warning=FALSE}
+imputed<-imputed_data[,c("interval","date","Mean")]
+colnames(imputed)<-c("interval","date","steps")
+alldata<-union(subset(data,is.na(steps)==FALSE),imputed)
+dailyimputedtotal <- alldata %>% group_by(date) %>% summarise(Total_Steps = sum(steps))
+imputedtotals<-as.numeric(dailyimputedtotal$Total_Steps)
+hist(imputedtotals, main="Histogram of Total number of steps taken each day", xlab= "Steps Taken")
+dailymean <- alldata %>% group_by(date) %>% summarise(Mean = mean(steps))
+dailymedian <-alldata %>% group_by(date) %>% summarise(Median = median(steps))
+mean<-mean(dailymean$Mean)
+median<-median(dailymedian$Median)
+```
+The new average steps is  `r mean` and the median steps is `r median`.
+  
+
+### Q8 - Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+```{r,message=FALSE,warning=FALSE}
+alldata<-union(subset(data,is.na(steps)==FALSE),imputed)
+alldata$day<-weekdays(as.Date(alldata$date))
+weekendmean <- subset(alldata,day =="Saturday" | day == "Sunday") %>% group_by(interval) %>% summarise(Mean = mean(steps))
+weekdaymean <- subset(alldata,day !="Saturday" & day != "Sunday") %>% group_by(interval) %>% summarise(Mean = mean(steps))
+par(mfrow=c(1,2))
+min<-min(union(weekdaymean$Mean,weekendmean$Mean))
+max<-max(union(weekdaymean$Mean,weekendmean$Mean))
+plot(data=weekendmean,x=weekendmean$interval,y=weekendmean$Mean,xlab="Interval",ylab="Average steps taken",main="Weekend Data",ylim=c(min,max))
+plot(data=weekdaymean,x=weekdaymean$interval,y=weekdaymean$Mean,xlab="Interval",ylab="Average steps taken",main="Weekday Data",ylim=c(min,max))
+
+```
